@@ -1,5 +1,3 @@
-tmp
-TODO.md
 # Created by https://www.toptal.com/developers/gitignore/api/go,linux,macos,goland,windows,sublimetext,visualstudiocode
 # Edit at https://www.toptal.com/developers/gitignore?templates=go,linux,macos,goland,windows,sublimetext,visualstudiocode
 
@@ -13,6 +11,7 @@ TODO.md
 *.dll
 *.so
 *.dylib
+tmp
 
 # Test binary, built with `go test -c`
 *.test

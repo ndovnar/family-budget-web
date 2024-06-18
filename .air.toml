@@ -1,0 +1,7 @@
+root = "."
+testdata_dir = "testdata"
+tmp_dir = "tmp"
+
+[build]
+  cmd = "make build"
+  bin = ";export $(grep -v '^#' .makerc | xargs); ./output/bin/family-budget-api"
