@@ -1,4 +1,4 @@
-package user
+package users
 
 import (
 	"net/http"
@@ -11,31 +11,29 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (user *User) HandleCreateUser(ctx *gin.Context) {
-	log.Debug().Msg("create user: handle")
-
-	var req newUserRequest
+func (u *Users) HandleCreateUser(ctx *gin.Context) {
+	var req createUserRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		log.Error().Err(err).Msg("create user: failed to parse data")
+		log.Error().Err(err).Msg("failed to parse data")
 		ctx.Error(error.NewHttpError(http.StatusBadRequest))
 		return
 	}
 
 	hashedPassword, err := hash.HashPassword(req.Password)
 	if err != nil {
-		log.Error().Err(err).Msg("create user: failed to hash password")
+		log.Error().Err(err).Msg("failed to hash password")
 		ctx.Error(error.NewHttpError(http.StatusInternalServerError))
 		return
 	}
 
-	newUser, err := user.store.CreateUser(ctx, &model.User{
+	user, err := u.store.CreateUser(ctx, &model.User{
 		Email:     req.Email,
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
 		Password:  hashedPassword,
 	})
 	if err != nil {
-		log.Error().Err(err).Msg("create user: failed to create")
+		log.Error().Err(err).Msg("failed to create user")
 
 		if err == store.ErrDuplicateKey {
 			ctx.Error(error.NewHttpError(http.StatusForbidden))
@@ -46,6 +44,5 @@ func (user *User) HandleCreateUser(ctx *gin.Context) {
 		return
 	}
 
-	log.Debug().Msg("create user: success")
-	ctx.JSON(http.StatusOK, newUserResponse(newUser))
+	ctx.JSON(http.StatusOK, newUserResponse(user))
 }

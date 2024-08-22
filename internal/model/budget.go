@@ -1,10 +1,9 @@
 package model
 
-type Account struct {
+type Budget struct {
 	ID        string
 	Owner     string
 	Name      string
-	Balance   float64
 	IsDeleted bool
 	Dates     Dates
 }

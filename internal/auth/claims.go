@@ -21,6 +21,7 @@ func newClaims(sessionID, userID, firstName, lastName string, duration time.Dura
 		LastName:  lastName,
 		SessionID: sessionID,
 		RegisteredClaims: jwt.RegisteredClaims{
+			// ID:        tokenID,
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(duration)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},

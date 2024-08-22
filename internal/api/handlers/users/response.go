@@ -1,4 +1,4 @@
-package user
+package users
 
 import "github.com/ndovnar/family-budget-api/internal/model"
 

@@ -1,4 +1,4 @@
-package user
+package tokens
 
 import (
 	"context"
@@ -7,19 +7,19 @@ import (
 	"github.com/ndovnar/family-budget-api/internal/model"
 )
 
-type User struct {
+type Tokens struct {
 	store Store
 	auth  *auth.Auth
 }
 
 type Store interface {
-	CreateUser(ctx context.Context, user *model.User) (*model.User, error)
-	GetUserByEmail(ctx context.Context, email string) (*model.User, error)
+	GetSessionByID(ctx context.Context, id string) (*model.Session, error)
 	CreateSession(ctx context.Context, params *model.Session) (*model.Session, error)
+	RevokeSession(ctx context.Context, id string) error
 }
 
-func NewUser(auth *auth.Auth, store Store) *User {
-	return &User{
+func New(auth *auth.Auth, store Store) *Tokens {
+	return &Tokens{
 		auth:  auth,
 		store: store,
 	}

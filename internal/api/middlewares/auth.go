@@ -9,12 +9,12 @@ import (
 	"github.com/ndovnar/family-budget-api/internal/api/error"
 	"github.com/ndovnar/family-budget-api/internal/auth"
 	"github.com/ndovnar/family-budget-api/internal/store"
+	"github.com/rs/zerolog/log"
 )
 
 const (
 	authorizationHeaderKey  = "authorization"
 	authorizationTypeBearer = "bearer"
-	authorizationPayloadKey = "authorization_payload"
 )
 
 func Auth(auth *auth.Auth, store store.Store) gin.HandlerFunc {
@@ -44,6 +44,7 @@ func Auth(auth *auth.Auth, store store.Store) gin.HandlerFunc {
 		accessToken := fields[1]
 		claims, err := auth.VerifyToken(accessToken)
 		if err != nil {
+			log.Error().Err(err).Msg("auth middleware: failed to verify token")
 			ctx.Error(error.NewHttpError(http.StatusUnauthorized))
 			ctx.Abort()
 			return
@@ -51,18 +52,20 @@ func Auth(auth *auth.Auth, store store.Store) gin.HandlerFunc {
 
 		session, err := store.GetSessionByID(ctx, claims.SessionID)
 		if err != nil {
+			log.Error().Err(err).Msg("auth middleware: failed to get session")
 			ctx.Error(error.NewHttpError(http.StatusUnauthorized))
 			ctx.Abort()
 			return
 		}
 
 		if session.IsRevoked {
+			log.Error().Err(err).Msg("auth middleware: session is revoked")
 			ctx.Error(error.NewHttpError(http.StatusUnauthorized))
 			ctx.Abort()
 			return
 		}
 
-		ctx.Set(authorizationPayloadKey, claims)
+		auth.SetClaimsToContext(ctx, claims)
 		ctx.Next()
 	}
 }

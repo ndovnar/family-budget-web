@@ -1,4 +1,4 @@
-package account
+package accounts
 
 import (
 	"net/http"
@@ -9,26 +9,26 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (account *Account) HandleCreateAccount(ctx *gin.Context) {
-	log.Debug().Msg("create account: handle")
+func (a *Accounts) HandleCreateAccount(ctx *gin.Context) {
+	claims := a.auth.GetClaimsFromContext(ctx)
 
-	var req newAccountRequest
+	var req createAccountRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		log.Error().Err(err).Msg("create account: failed to parse data")
+		log.Error().Err(err).Msg("failed to parse data")
 		ctx.Error(error.NewHttpError(http.StatusBadRequest))
 		return
 	}
 
-	newAccount, err := account.store.CreateAccount(ctx, &model.Account{
+	account, err := a.store.CreateAccount(ctx, &model.Account{
+		Owner:   claims.UserID,
 		Name:    req.Name,
 		Balance: req.Balance,
 	})
 	if err != nil {
-		log.Error().Err(err).Msg("create account: failed to create")
+		log.Error().Err(err).Msg("failed to create account")
 		ctx.Error(error.NewHttpError(http.StatusInternalServerError))
 		return
 	}
 
-	log.Debug().Msg("create account: success")
-	ctx.JSON(http.StatusOK, newAccountResponse(newAccount))
+	ctx.JSON(http.StatusOK, newAccountResponse(account))
 }

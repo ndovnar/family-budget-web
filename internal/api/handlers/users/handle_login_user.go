@@ -1,4 +1,4 @@
-package user
+package users
 
 import (
 	"net/http"
@@ -11,17 +11,17 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (user *User) HandleLoginUser(ctx *gin.Context) {
+func (u *Users) HandleLoginUser(ctx *gin.Context) {
 	var req loginUserRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		log.Error().Err(err).Msg("login user: failed to parse data")
+		log.Error().Err(err).Msg("failed to parse data")
 		ctx.Error(error.NewHttpError(http.StatusBadRequest))
 		return
 	}
 
-	savedUser, err := user.store.GetUserByEmail(ctx, req.Email)
+	user, err := u.store.GetUserByEmail(ctx, req.Email)
 	if err != nil {
-		log.Error().Err(err).Msg("login user: failed to get user from DB")
+		log.Error().Err(err).Msg("failed to get user from DB")
 
 		if err == store.ErrNotFound {
 			ctx.Error(error.NewHttpError(http.StatusNotFound))
@@ -32,31 +32,32 @@ func (user *User) HandleLoginUser(ctx *gin.Context) {
 		return
 	}
 
-	err = hash.CheckPassword(req.Password, savedUser.Password)
+	err = hash.CheckPassword(req.Password, user.Password)
 	if err != nil {
+		log.Error().Err(err).Msg("password is incorrect")
 		ctx.Error(error.NewHttpError(http.StatusUnauthorized))
 		return
 	}
 
-	session, err := user.store.CreateSession(ctx, &model.Session{
-		UserID: savedUser.ID,
+	session, err := u.store.CreateSession(ctx, &model.Session{
+		UserID: user.ID,
 	})
 	if err != nil {
-		log.Error().Err(err).Msg("login user: failed to create session")
+		log.Error().Err(err).Msg("failed to create session")
 		ctx.Error(error.NewHttpError(http.StatusInternalServerError))
 		return
 	}
 
-	accessToken, err := user.auth.CreateAccessToken(session.ID, savedUser.ID, savedUser.FirstName, savedUser.LastName)
+	accessToken, err := u.auth.CreateAccessToken(session.ID, user.ID, user.FirstName, user.LastName)
 	if err != nil {
-		log.Error().Err(err).Msg("login user: failed to create access token")
+		log.Error().Err(err).Msg("failed to create access token")
 		ctx.Error(error.NewHttpError(http.StatusInternalServerError))
 		return
 	}
 
-	refreshToken, err := user.auth.CreateRefreshToken(session.ID, savedUser.ID, savedUser.FirstName, savedUser.LastName)
+	refreshToken, err := u.auth.CreateRefreshToken(session.ID, user.ID, user.FirstName, user.LastName)
 	if err != nil {
-		log.Error().Err(err).Msg("login user: failed to create refresh token")
+		log.Error().Err(err).Msg("failed to create refresh token")
 		ctx.Error(error.NewHttpError(http.StatusInternalServerError))
 		return
 	}

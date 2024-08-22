@@ -14,7 +14,6 @@ import (
 
 func (m *Mongo) GetUserByID(ctx context.Context, id string) (*model.User, error) {
 	oid, err := primitive.ObjectIDFromHex(id)
-
 	if err != nil {
 		return nil, store.ErrNotFound
 	}

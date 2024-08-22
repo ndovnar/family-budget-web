@@ -1,0 +1,3 @@
+- update all logs in handlers
+- make sure users can fetch only their/shared accounts,budgets
+- add validation errors
