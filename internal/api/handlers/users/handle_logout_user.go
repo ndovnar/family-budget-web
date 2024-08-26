@@ -11,9 +11,9 @@ import (
 func (u *Users) HandleLogoutUser(ctx *gin.Context) {
 	claims := u.auth.GetClaimsFromContext(ctx)
 
-	err := u.store.RevokeSession(ctx, claims.SessionID)
+	err := u.store.DeleteSession(ctx, claims.SessionID)
 	if err != nil {
-		log.Debug().Msg("failed to revoke session")
+		log.Debug().Msg("failed to delete session")
 		ctx.Error(error.NewHttpError(http.StatusInternalServerError))
 		return
 	}

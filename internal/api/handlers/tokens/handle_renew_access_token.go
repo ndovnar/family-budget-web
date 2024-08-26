@@ -30,7 +30,7 @@ func (t *Tokens) HandleRenewAccessToken(ctx *gin.Context) {
 		return
 	}
 
-	if session.IsRevoked {
+	if session.IsDeleted {
 		log.Error().Err(err).Msg("session is revoked")
 		ctx.Error(error.NewHttpError(http.StatusUnauthorized))
 		return

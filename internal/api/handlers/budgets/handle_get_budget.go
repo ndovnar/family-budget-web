@@ -13,7 +13,6 @@ func (b *Budgets) HandleGetBudget(ctx *gin.Context) {
 	id := ctx.Param("id")
 
 	budget, err := b.store.GetBudget(ctx, id)
-
 	if err != nil {
 		log.Error().Err(err).Msg("failed to get budget")
 
@@ -26,5 +25,5 @@ func (b *Budgets) HandleGetBudget(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, newBudgetResponse(budget))
+	ctx.JSON(http.StatusOK, budget)
 }

@@ -15,7 +15,7 @@ type Tokens struct {
 type Store interface {
 	GetSessionByID(ctx context.Context, id string) (*model.Session, error)
 	CreateSession(ctx context.Context, params *model.Session) (*model.Session, error)
-	RevokeSession(ctx context.Context, id string) error
+	DeleteSession(ctx context.Context, id string) error
 }
 
 func New(auth *auth.Auth, store Store) *Tokens {

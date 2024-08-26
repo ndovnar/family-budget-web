@@ -5,6 +5,7 @@ import (
 	"github.com/ndovnar/family-budget-api/internal/api/handlers/budgets"
 	"github.com/ndovnar/family-budget-api/internal/api/handlers/categories"
 	"github.com/ndovnar/family-budget-api/internal/api/handlers/tokens"
+	"github.com/ndovnar/family-budget-api/internal/api/handlers/transactions"
 	"github.com/ndovnar/family-budget-api/internal/api/handlers/users"
 	"github.com/ndovnar/family-budget-api/internal/api/middlewares"
 )
@@ -15,6 +16,7 @@ func (api *API) registerRoutes() {
 	tokenHandlers := tokens.New(api.auth, api.store)
 	budgetHandlers := budgets.New(api.auth, api.store)
 	categoryHandlers := categories.New(api.store)
+	transactionHandlers := transactions.New(api.auth, api.store)
 
 	api.router.Use(middlewares.Error())
 	authRoutes := api.router.Group("/").Use(middlewares.Auth(api.auth, api.store))
@@ -43,4 +45,10 @@ func (api *API) registerRoutes() {
 	authRoutes.POST("/categories", categoryHandlers.HandleCreateCategory)
 	authRoutes.PUT("/categories/:id", categoryHandlers.HandleUpdateCategory)
 	authRoutes.DELETE("/categories/:id", categoryHandlers.HandleDeleteCategory)
+
+	authRoutes.GET("/transactions", transactionHandlers.HandleGetTransactions)
+	authRoutes.GET("/transactions/:id", transactionHandlers.HandleGetTransaction)
+	authRoutes.POST("/transactions", transactionHandlers.HandleCreateTransaction)
+	authRoutes.PUT("/transactions/:id", transactionHandlers.HandleUpdateTransaction)
+	authRoutes.DELETE("/transactions/:id", transactionHandlers.HandleDeleteTransaction)
 }

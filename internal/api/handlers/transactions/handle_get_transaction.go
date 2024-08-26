@@ -1,4 +1,4 @@
-package accounts
+package transactions
 
 import (
 	"net/http"
@@ -9,12 +9,12 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (a *Accounts) HandleGetAcccount(ctx *gin.Context) {
+func (t *Transactions) HandleGetTransaction(ctx *gin.Context) {
 	id := ctx.Param("id")
-	account, err := a.store.GetAccount(ctx, id)
 
+	budget, err := t.store.GetTransaction(ctx, id)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to get account")
+		log.Error().Err(err).Msg("failed to get transaction")
 
 		if err == store.ErrNotFound {
 			ctx.Error(error.NewHttpError(http.StatusNotFound))
@@ -25,5 +25,5 @@ func (a *Accounts) HandleGetAcccount(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, account)
+	ctx.JSON(http.StatusOK, budget)
 }

@@ -31,15 +31,15 @@ func (t *Tokens) HandleRenewRefreshToken(ctx *gin.Context) {
 		return
 	}
 
-	if session.IsRevoked {
+	if session.IsDeleted {
 		log.Error().Err(err).Msg("session is revoked")
 		ctx.Error(error.NewHttpError(http.StatusUnauthorized))
 		return
 	}
 
-	err = t.store.RevokeSession(ctx, session.ID)
+	err = t.store.DeleteSession(ctx, session.ID)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to revoke session")
+		log.Error().Err(err).Msg("failed to delete session")
 		ctx.Error(error.NewHttpError(http.StatusInternalServerError))
 		return
 	}

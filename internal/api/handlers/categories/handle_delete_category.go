@@ -13,7 +13,6 @@ func (a *Categories) HandleDeleteCategory(ctx *gin.Context) {
 	id := ctx.Param("id")
 
 	err := a.store.DeleteCategory(ctx, id)
-
 	if err != nil {
 		log.Error().Err(err).Msg("failed to delete category")
 

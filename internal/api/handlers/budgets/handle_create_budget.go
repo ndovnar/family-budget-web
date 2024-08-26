@@ -12,7 +12,7 @@ import (
 func (b *Budgets) HandleCreateBudget(ctx *gin.Context) {
 	claims := b.auth.GetClaimsFromContext(ctx)
 
-	var req createBudgetRequest
+	var req budgetRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		log.Error().Err(err).Msg("failed to parse data")
 		ctx.Error(error.NewHttpError(http.StatusBadRequest))
@@ -29,5 +29,5 @@ func (b *Budgets) HandleCreateBudget(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, newBudgetResponse(budget))
+	ctx.JSON(http.StatusOK, budget)
 }

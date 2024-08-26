@@ -2,55 +2,60 @@ package mongo
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/ndovnar/family-budget-api/internal/model"
 	"github.com/ndovnar/family-budget-api/internal/store"
-	"github.com/ndovnar/family-budget-api/internal/store/mongo/dto"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func (m *Mongo) GetSessionByID(ctx context.Context, id string) (*model.Session, error) {
-	oid, err := primitive.ObjectIDFromHex(id)
+	filter, err := getByIDFilter(id)
 	if err != nil {
 		return nil, store.ErrNotFound
 	}
 
-	filter := getByIDFilter(oid)
 	return m.getSession(ctx, filter)
 }
 
 func (m *Mongo) CreateSession(ctx context.Context, session *model.Session) (*model.Session, error) {
 	currentTime := time.Now()
+	session.Dates = model.Dates{
+		Created:  &currentTime,
+		Modified: &currentTime,
+	}
 
-	dtoSession := dto.ModelSessionToDtoSession(session)
-	dtoSession.Dates = dto.Dates{Created: &currentTime, Modified: &currentTime}
-
-	_, err := m.database.
+	result, err := m.database.
 		Collection(CollectionSessions).
-		InsertOne(ctx, dtoSession)
-
+		InsertOne(ctx, session)
 	if err != nil {
 		log.Info().Msgf("mongo: failed to create session. %v", err)
 		return nil, mongoErrorToDBError(err)
 	}
 
-	return dto.DtoSessionToModelSession(dtoSession), nil
+	newID, ok := result.InsertedID.(primitive.ObjectID)
+	if !ok {
+		err = fmt.Errorf("id of the inserted document %q is not an object id", result.InsertedID)
+		return nil, err
+	}
+
+	session.ID = newID.Hex()
+	return session, nil
 }
 
-func (m *Mongo) RevokeSession(ctx context.Context, id string) error {
-	oid, err := primitive.ObjectIDFromHex(id)
+func (m *Mongo) DeleteSession(ctx context.Context, id string) error {
+	filter, err := getNotDeletedByIDFilter(id)
 	if err != nil {
 		return store.ErrNotFound
 	}
 
-	filter := getByIDFilter(oid)
 	update := bson.M{
 		"$set": bson.M{
-			"dates.modified": time.Now(),
-			"revoked":        true,
+			"deleted":       true,
+			"dates.deleted": time.Now(),
 		},
 	}
 
@@ -73,13 +78,13 @@ func (m *Mongo) getSession(ctx context.Context, filter bson.M) (*model.Session, 
 		Collection(CollectionSessions).
 		FindOne(ctx, filter)
 
-	session := dto.Session{}
-	err := res.Decode(&session)
+	session := &model.Session{}
+	err := res.Decode(session)
 
 	if err != nil {
 		log.Error().Err(err).Msgf("mongo getSession: error while decoding the database object to a session. %v", err)
 		return nil, mongoErrorToDBError(err)
 	}
 
-	return dto.DtoSessionToModelSession(&session), nil
+	return session, nil
 }

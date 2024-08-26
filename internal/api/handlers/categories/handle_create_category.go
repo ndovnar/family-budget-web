@@ -17,8 +17,8 @@ func (a *Categories) HandleCreateCategory(ctx *gin.Context) {
 		return
 	}
 
-	account, err := a.store.CreateCategory(ctx, &model.Category{
-		BudgetID: req.BudgetID,
+	category, err := a.store.CreateCategory(ctx, &model.Category{
+		Budget:   req.Budget,
 		Name:     req.Name,
 		Currency: req.Currency,
 		Balance:  req.Balance,
@@ -29,5 +29,5 @@ func (a *Categories) HandleCreateCategory(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, newCategoryResponse(account))
+	ctx.JSON(http.StatusOK, category)
 }

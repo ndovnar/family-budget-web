@@ -5,13 +5,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ndovnar/family-budget-api/internal/api/error"
-	"github.com/ndovnar/family-budget-api/internal/store"
+	"github.com/ndovnar/family-budget-api/internal/model"
 	"github.com/rs/zerolog/log"
 )
 
 func (b *Budgets) HandleGetBudgets(ctx *gin.Context) {
 	claims := b.auth.GetClaimsFromContext(ctx)
-	filter := &store.GetBudgetsFilter{Owner: claims.UserID}
+	filter := &model.GetBudgetsFilter{Owner: claims.UserID}
 
 	budgets, err := b.store.GetBudgets(ctx, filter)
 	if err != nil {
@@ -20,5 +20,5 @@ func (b *Budgets) HandleGetBudgets(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, newBudgetsResponse(budgets))
+	ctx.JSON(http.StatusOK, budgets)
 }

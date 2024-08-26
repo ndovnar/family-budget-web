@@ -58,7 +58,7 @@ func Auth(auth *auth.Auth, store store.Store) gin.HandlerFunc {
 			return
 		}
 
-		if session.IsRevoked {
+		if session.IsDeleted {
 			log.Error().Err(err).Msg("auth middleware: session is revoked")
 			ctx.Error(error.NewHttpError(http.StatusUnauthorized))
 			ctx.Abort()

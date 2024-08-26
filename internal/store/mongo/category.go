@@ -2,11 +2,11 @@ package mongo
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/ndovnar/family-budget-api/internal/model"
 	"github.com/ndovnar/family-budget-api/internal/store"
-	"github.com/ndovnar/family-budget-api/internal/store/mongo/dto"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -22,71 +22,72 @@ func (m *Mongo) GetCategories(ctx context.Context) ([]*model.Category, error) {
 		return nil, err
 	}
 
-	dtoCategories := []*dto.Category{}
+	categories := []*model.Category{}
 	for res.Next(ctx) {
-		dtoCategory := &dto.Category{}
-		err = res.Decode(&dtoCategory)
+		category := &model.Category{}
+		err = res.Decode(category)
 		if err != nil {
 			return nil, err
 		}
 
-		dtoCategories = append(dtoCategories, dtoCategory)
+		categories = append(categories, category)
 	}
 
-	return dto.DtoCategoriesToModelCategories(dtoCategories), nil
+	return categories, nil
 }
 
 func (m *Mongo) GetCategory(ctx context.Context, id string) (*model.Category, error) {
-	oid, err := primitive.ObjectIDFromHex(id)
+	filter, err := getNotDeletedByIDFilter(id)
 	if err != nil {
 		return nil, store.ErrNotFound
 	}
 
-	filter := getNotDeletedByIDFilter(oid)
 	return m.getCategory(ctx, filter)
 }
 
 func (m *Mongo) CreateCategory(ctx context.Context, category *model.Category) (*model.Category, error) {
 	currentTime := time.Now()
+	category.Dates = model.Dates{
+		Created:  &currentTime,
+		Modified: &currentTime,
+	}
 
-	dtoCategory := dto.ModelCategoryToDtoCategory(category)
-	dtoCategory.Dates = dto.Dates{Created: &currentTime, Modified: &currentTime}
-
-	_, err := m.database.
+	result, err := m.database.
 		Collection(CollectionCategories).
-		InsertOne(ctx, dtoCategory)
-
+		InsertOne(ctx, category)
 	if err != nil {
 		log.Error().Err(err).Msgf("mongo: failed to create category. %v", err)
 		return nil, mongoErrorToDBError(err)
 	}
 
-	createdCategory := dto.DtoCategoryToModelCategory(dtoCategory)
+	newID, ok := result.InsertedID.(primitive.ObjectID)
+	if !ok {
+		err = fmt.Errorf("id of the inserted document %q is not an object id", result.InsertedID)
+		return nil, err
+	}
 
-	return createdCategory, nil
+	category.ID = newID.Hex()
+	return category, nil
 }
 
 func (m *Mongo) UpdateCategory(ctx context.Context, id string, category *model.Category) (*model.Category, error) {
-	oid, err := primitive.ObjectIDFromHex(id)
+	filter, err := getNotDeletedByIDFilter(id)
 	if err != nil {
 		return nil, store.ErrNotFound
 	}
 
-	filter := getNotDeletedByIDFilter(oid)
 	currentTime := time.Now()
-	dtoCategory := dto.ModelCategoryToDtoCategory(category)
-	dtoCategory.Dates.Modified = &currentTime
 	update := bson.M{
 		"$set": bson.M{
-			"name":           dtoCategory.Name,
-			"budgetId":       dtoCategory.BudgetID,
-			"dates.modified": dtoCategory.Dates.Modified,
-			"balance":        dtoCategory.Balance,
-			"currency":       dtoCategory.Currency,
+			"name":           category.Name,
+			"budget":         category.Budget,
+			"dates.modified": &currentTime,
+			"balance":        category.Balance,
+			"currency":       category.Currency,
 		},
 	}
 
-	updateResult, err := m.
+	result, err := m.
 		database.
 		Collection(CollectionCategories).
 		UpdateOne(ctx, filter, update)
@@ -94,7 +95,7 @@ func (m *Mongo) UpdateCategory(ctx context.Context, id string, category *model.C
 		return nil, err
 	}
 
-	if updateResult.MatchedCount == 0 {
+	if result.MatchedCount == 0 {
 		return nil, store.ErrNotFound
 	}
 
@@ -102,17 +103,15 @@ func (m *Mongo) UpdateCategory(ctx context.Context, id string, category *model.C
 }
 
 func (m *Mongo) DeleteCategory(ctx context.Context, id string) error {
-	oid, err := primitive.ObjectIDFromHex(id)
+	filter, err := getNotDeletedByIDFilter(id)
 	if err != nil {
 		return store.ErrNotFound
 	}
 
-	filter := getNotDeletedByIDFilter(oid)
 	update := bson.M{
 		"$set": bson.M{
-			"dates.modified": time.Now(),
-			"dates.deleted":  time.Now(),
-			"deleted":        true,
+			"dates.deleted": time.Now(),
+			"deleted":       true,
 		},
 	}
 	updateResult, err := m.database.
@@ -134,13 +133,13 @@ func (m *Mongo) getCategory(ctx context.Context, filter bson.M) (*model.Category
 		Collection(CollectionCategories).
 		FindOne(ctx, filter)
 
-	category := dto.Category{}
-	err := res.Decode(&category)
+	category := &model.Category{}
+	err := res.Decode(category)
 
 	if err != nil {
 		log.Error().Err(err).Msgf("mongo getCategory: error while decoding the database object to a category. %v", err)
 		return nil, mongoErrorToDBError(err)
 	}
 
-	return dto.DtoCategoryToModelCategory(&category), nil
+	return category, nil
 }

@@ -2,89 +2,95 @@ package mongo
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/ndovnar/family-budget-api/internal/model"
 	"github.com/ndovnar/family-budget-api/internal/store"
-	"github.com/ndovnar/family-budget-api/internal/store/mongo/dto"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func (m *Mongo) GetAccounts(ctx context.Context, filter *store.GetAccountsFilter) ([]*model.Account, error) {
+func (m *Mongo) GetAccounts(ctx context.Context, getAccountsFilter *model.GetAccountsFilter) ([]*model.Account, error) {
+	filter := bson.M{
+		"owner":   getAccountsFilter.Owner,
+		"deleted": getAccountsFilter.Deleted,
+	}
+
 	res, err := m.database.
 		Collection(CollectionAccounts).
-		Find(ctx, bson.M{"owner": filter.Owner}, nil)
-
+		Find(ctx, filter, nil)
 	if err != nil {
 		log.Error().Err(err).Msgf("mongo: failed to get accounts. %v", err)
 		return nil, err
 	}
 
-	dtoAccounts := []*dto.Account{}
+	accounts := []*model.Account{}
 	for res.Next(ctx) {
-		dtoAccount := &dto.Account{}
-		err = res.Decode(&dtoAccount)
+		account := &model.Account{}
+		err = res.Decode(account)
 		if err != nil {
 			return nil, err
 		}
 
-		dtoAccounts = append(dtoAccounts, dtoAccount)
+		accounts = append(accounts, account)
 	}
 
-	return dto.DtoAccountsToModelAccounts(dtoAccounts), nil
+	return accounts, nil
 }
 
 func (m *Mongo) GetAccount(ctx context.Context, id string) (*model.Account, error) {
-	oid, err := primitive.ObjectIDFromHex(id)
+	filter, err := getNotDeletedByIDFilter(id)
 	if err != nil {
 		return nil, store.ErrNotFound
 	}
 
-	filter := getNotDeletedByIDFilter(oid)
 	return m.getAccount(ctx, filter)
 }
 
 func (m *Mongo) CreateAccount(ctx context.Context, account *model.Account) (*model.Account, error) {
 	currentTime := time.Now()
+	account.Dates = model.Dates{
+		Created:  &currentTime,
+		Modified: &currentTime,
+	}
 
-	dtoAccount := dto.ModelAccountToDtoAccount(account)
-	dtoAccount.Dates = dto.Dates{Created: &currentTime, Modified: &currentTime}
-
-	_, err := m.database.
+	result, err := m.database.
 		Collection(CollectionAccounts).
-		InsertOne(ctx, dtoAccount)
+		InsertOne(ctx, account)
 
 	if err != nil {
 		log.Error().Err(err).Msgf("mongo: failed to create account. %v", err)
 		return nil, mongoErrorToDBError(err)
 	}
 
-	createdAccount := dto.DtoAccountToModelAccount(dtoAccount)
+	newID, ok := result.InsertedID.(primitive.ObjectID)
+	if !ok {
+		err = fmt.Errorf("id of the inserted document %q is not an object id", result.InsertedID)
+		return nil, err
+	}
 
-	return createdAccount, nil
+	account.ID = newID.Hex()
+	return account, nil
 }
 
 func (m *Mongo) UpdateAccount(ctx context.Context, id string, account *model.Account) (*model.Account, error) {
-	oid, err := primitive.ObjectIDFromHex(id)
+	filter, err := getNotDeletedByIDFilter(id)
 	if err != nil {
 		return nil, store.ErrNotFound
 	}
 
-	filter := getNotDeletedByIDFilter(oid)
 	currentTime := time.Now()
-	dtoAccount := dto.ModelAccountToDtoAccount(account)
-	dtoAccount.Dates.Modified = &currentTime
 	update := bson.M{
 		"$set": bson.M{
-			"name":           dtoAccount.Name,
-			"dates.modified": dtoAccount.Dates.Modified,
-			"balance":        dtoAccount.Balance,
+			"name":           account.Name,
+			"balance":        account.Balance,
+			"dates.modified": &currentTime,
 		},
 	}
 
-	updateResult, err := m.
+	result, err := m.
 		database.
 		Collection(CollectionAccounts).
 		UpdateOne(ctx, filter, update)
@@ -92,7 +98,7 @@ func (m *Mongo) UpdateAccount(ctx context.Context, id string, account *model.Acc
 		return nil, err
 	}
 
-	if updateResult.MatchedCount == 0 {
+	if result.MatchedCount == 0 {
 		return nil, store.ErrNotFound
 	}
 
@@ -100,16 +106,15 @@ func (m *Mongo) UpdateAccount(ctx context.Context, id string, account *model.Acc
 }
 
 func (m *Mongo) DeleteAccount(ctx context.Context, id string) error {
-	oid, err := primitive.ObjectIDFromHex(id)
+	filter, err := getNotDeletedByIDFilter(id)
 	if err != nil {
 		return store.ErrNotFound
 	}
 
-	filter := getNotDeletedByIDFilter(oid)
 	update := bson.M{
 		"$set": bson.M{
-			"dates.modified": time.Now(),
-			"deleted":        true,
+			"dates.deleted": time.Now(),
+			"deleted":       true,
 		},
 	}
 	updateResult, err := m.database.
@@ -131,13 +136,13 @@ func (m *Mongo) getAccount(ctx context.Context, filter bson.M) (*model.Account, 
 		Collection(CollectionAccounts).
 		FindOne(ctx, filter)
 
-	account := dto.Account{}
-	err := res.Decode(&account)
+	account := &model.Account{}
+	err := res.Decode(account)
 
 	if err != nil {
 		log.Error().Err(err).Msgf("mongo getAccount: error while decoding the database object to a account. %v", err)
 		return nil, mongoErrorToDBError(err)
 	}
 
-	return dto.DtoAccountToModelAccount(&account), nil
+	return account, nil
 }

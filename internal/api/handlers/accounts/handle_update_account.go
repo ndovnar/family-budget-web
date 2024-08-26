@@ -12,7 +12,7 @@ import (
 func (a *Accounts) HandleUpdateAccount(ctx *gin.Context) {
 	id := ctx.Param("id")
 
-	var req updateAccountRequest
+	var req accountRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		log.Error().Err(err).Msg("failed to parse data")
 		ctx.Error(error.NewHttpError(http.StatusBadRequest))
@@ -20,7 +20,6 @@ func (a *Accounts) HandleUpdateAccount(ctx *gin.Context) {
 	}
 
 	account, err := a.store.UpdateAccount(ctx, id, &model.Account{
-		Owner:   req.Owner,
 		Name:    req.Name,
 		Balance: req.Balance,
 	})
@@ -30,5 +29,5 @@ func (a *Accounts) HandleUpdateAccount(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, newAccountResponse(account))
+	ctx.JSON(http.StatusOK, account)
 }

@@ -16,5 +16,5 @@ func (a *Categories) HandleGetCategories(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, newCategoriesResponse(categories))
+	ctx.JSON(http.StatusOK, categories)
 }

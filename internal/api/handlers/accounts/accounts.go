@@ -5,7 +5,6 @@ import (
 
 	"github.com/ndovnar/family-budget-api/internal/auth"
 	"github.com/ndovnar/family-budget-api/internal/model"
-	"github.com/ndovnar/family-budget-api/internal/store"
 )
 
 type Accounts struct {
@@ -14,7 +13,7 @@ type Accounts struct {
 }
 
 type Store interface {
-	GetAccounts(ctx context.Context, filter *store.GetAccountsFilter) ([]*model.Account, error)
+	GetAccounts(ctx context.Context, filter *model.GetAccountsFilter) ([]*model.Account, error)
 	GetAccount(ctx context.Context, id string) (*model.Account, error)
 	CreateAccount(ctx context.Context, account *model.Account) (*model.Account, error)
 	UpdateAccount(ctx context.Context, id string, account *model.Account) (*model.Account, error)

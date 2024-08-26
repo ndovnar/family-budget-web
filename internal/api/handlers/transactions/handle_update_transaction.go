@@ -1,4 +1,4 @@
-package categories
+package transactions
 
 import (
 	"net/http"
@@ -9,27 +9,29 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (a *Categories) HandleUpdateCategory(ctx *gin.Context) {
+func (t *Transactions) HandleUpdateTransaction(ctx *gin.Context) {
 	id := ctx.Param("id")
 
-	var req categoryRequest
+	var req transactionRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		log.Error().Err(err).Msg("failed to parse data")
 		ctx.Error(error.NewHttpError(http.StatusBadRequest))
 		return
 	}
 
-	category, err := a.store.UpdateCategory(ctx, id, &model.Category{
-		Budget:   req.Budget,
-		Name:     req.Name,
-		Currency: req.Currency,
-		Balance:  req.Balance,
+	transaction, err := t.store.UpdateTransaction(ctx, id, &model.Transaction{
+		Type:        req.Type,
+		FromAccount: req.FromAccount,
+		ToAccount:   req.ToAccount,
+		Category:    req.Category,
+		Amount:      req.Amount,
+		Description: req.Description,
 	})
 	if err != nil {
-		log.Error().Err(err).Msg("failed to updated category")
+		log.Error().Err(err).Msg("failed to updated transaction")
 		ctx.Error(error.NewHttpError(http.StatusInternalServerError))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, category)
+	ctx.JSON(http.StatusOK, transaction)
 }

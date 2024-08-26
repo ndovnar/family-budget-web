@@ -12,7 +12,7 @@ import (
 func (a *Accounts) HandleCreateAccount(ctx *gin.Context) {
 	claims := a.auth.GetClaimsFromContext(ctx)
 
-	var req createAccountRequest
+	var req accountRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		log.Error().Err(err).Msg("failed to parse data")
 		ctx.Error(error.NewHttpError(http.StatusBadRequest))
@@ -30,5 +30,5 @@ func (a *Accounts) HandleCreateAccount(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, newAccountResponse(account))
+	ctx.JSON(http.StatusOK, account)
 }

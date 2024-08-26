@@ -1,10 +1,5 @@
 package budgets
 
-type createBudgetRequest struct {
-	Name string `json:"name" binding:"required"`
-}
-
-type updateBudgetRequest struct {
-	ID   string `json:"id" binding:"required"`
+type budgetRequest struct {
 	Name string `json:"name" binding:"required"`
 }
