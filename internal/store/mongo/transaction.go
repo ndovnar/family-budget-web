@@ -64,7 +64,7 @@ func (m *Mongo) CreateTransaction(ctx context.Context, transaction *model.Transa
 		Modified: &currentTime,
 	}
 
-	err := m.proceedTransaction(ctx, transaction)
+	err := m.createTransaction(ctx, transaction)
 	if err != nil {
 		return nil, err
 	}
@@ -98,20 +98,12 @@ func (m *Mongo) UpdateTransaction(ctx context.Context, id string, updatedTransac
 		return nil, err
 	}
 
-	transactionRevert := &model.Transaction{
-		Type:        transaction.Type,
-		Category:    transaction.Category,
-		FromAccount: transaction.ToAccount,
-		ToAccount:   transaction.FromAccount,
-		Amount:      transaction.Amount,
-	}
-
-	err = m.proceedTransaction(ctx, transactionRevert)
+	err = m.revertTransaction(ctx, transaction)
 	if err != nil {
 		return nil, err
 	}
 
-	err = m.proceedTransaction(ctx, updatedTransaction)
+	err = m.createTransaction(ctx, updatedTransaction)
 	if err != nil {
 		return nil, err
 	}
@@ -154,15 +146,7 @@ func (m *Mongo) DeleteTransaction(ctx context.Context, id string) error {
 		return err
 	}
 
-	transactionRevert := &model.Transaction{
-		Type:        transaction.Type,
-		Category:    transaction.Category,
-		FromAccount: transaction.ToAccount,
-		ToAccount:   transaction.FromAccount,
-		Amount:      transaction.Amount,
-	}
-
-	err = m.proceedTransaction(ctx, transactionRevert)
+	err = m.revertTransaction(ctx, transaction)
 	if err != nil {
 		return err
 	}
@@ -177,12 +161,10 @@ func (m *Mongo) DeleteTransaction(ctx context.Context, id string) error {
 		Collection(CollectionTransactions).
 		UpdateOne(ctx, filter, update)
 	if err != nil {
-		fmt.Println("HERE 4")
 		return err
 	}
 
 	if updateResult.MatchedCount == 0 {
-		fmt.Println("HERE 5")
 		return store.ErrNotFound
 	}
 
@@ -205,28 +187,90 @@ func (m *Mongo) getTransaction(ctx context.Context, filter bson.M) (*model.Trans
 	return transaction, nil
 }
 
-func (m *Mongo) proceedTransaction(ctx context.Context, transaction *model.Transaction) error {
-	switch transaction.Type {
-	case model.TransactionTypeTransfer:
-		fromAccount, err := m.GetAccount(ctx, transaction.FromAccount)
+func (m *Mongo) createTransaction(ctx context.Context, transaction *model.Transaction) error {
+	return m.makeTransaction(ctx, &makeTransactionParams{
+		fromAccount:        transaction.FromAccount,
+		fromAccountAmmount: transaction.Amount * -1,
+		toAccount:          transaction.ToAccount,
+		toAccountAmmount:   transaction.Amount,
+		category:           transaction.Category,
+		categoryAmmount:    transaction.Amount * -1,
+	})
+}
+
+func (m *Mongo) revertTransaction(ctx context.Context, transaction *model.Transaction) error {
+	return m.makeTransaction(ctx, &makeTransactionParams{
+		fromAccount:        transaction.FromAccount,
+		fromAccountAmmount: transaction.Amount,
+		toAccount:          transaction.ToAccount,
+		toAccountAmmount:   transaction.Amount * -1,
+		category:           transaction.Category,
+		categoryAmmount:    transaction.Amount,
+	})
+}
+
+type makeTransactionParams struct {
+	fromAccount        string
+	fromAccountAmmount float64
+	toAccount          string
+	toAccountAmmount   float64
+	category           string
+	categoryAmmount    float64
+}
+
+func (m *Mongo) makeTransaction(ctx context.Context, params *makeTransactionParams) error {
+	var fromAccount, toAccount *model.Account
+	var category *model.Category
+
+	if params.fromAccount != "" {
+		accountDB, err := m.GetAccount(ctx, params.fromAccount)
 		if err != nil {
 			return err
 		}
 
-		toAccount, err := m.GetAccount(ctx, transaction.ToAccount)
+		fromAccount = accountDB
+	}
+
+	if params.toAccount != "" {
+		accountDB, err := m.GetAccount(ctx, params.toAccount)
 		if err != nil {
 			return err
 		}
 
-		fromAccount.Balance -= transaction.Amount
-		toAccount.Balance += transaction.Amount
+		toAccount = accountDB
+	}
 
-		_, err = m.UpdateAccount(ctx, fromAccount.ID, fromAccount)
+	if params.category != "" {
+		categoryDB, err := m.GetCategory(ctx, params.category)
 		if err != nil {
 			return err
 		}
 
-		_, err = m.UpdateAccount(ctx, toAccount.ID, toAccount)
+		category = categoryDB
+	}
+
+	if fromAccount != nil {
+		fromAccount.Balance += params.fromAccountAmmount
+
+		_, err := m.UpdateAccount(ctx, fromAccount.ID, fromAccount)
+		if err != nil {
+			return err
+		}
+	}
+
+	if toAccount != nil {
+		toAccount.Balance += params.toAccountAmmount
+
+		_, err := m.UpdateAccount(ctx, toAccount.ID, toAccount)
+		if err != nil {
+			return err
+		}
+	}
+
+	if category != nil {
+		category.Balance += params.categoryAmmount
+
+		_, err := m.UpdateCategory(ctx, category.ID, category)
 		if err != nil {
 			return err
 		}

@@ -90,6 +90,7 @@ func runApi(ctx context.Context, cfg api.Config, auth *auth.Auth, myStore store.
 	if err != nil {
 		log.Err(err).Msg("api - shutdown of http server exited with error")
 	}
+
 	log.Info().Msg("api - graceful shutdown complete")
 
 	return errors.Join(serveError, err)
