@@ -5,7 +5,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ndovnar/family-budget-api/internal/api/error"
-	"github.com/ndovnar/family-budget-api/internal/hash"
 	"github.com/ndovnar/family-budget-api/internal/model"
 	"github.com/ndovnar/family-budget-api/internal/store"
 	"github.com/rs/zerolog/log"
@@ -32,7 +31,7 @@ func (u *Users) HandleLoginUser(ctx *gin.Context) {
 		return
 	}
 
-	err = hash.CheckPassword(req.Password, user.Password)
+	err = checkPassword(req.Password, user.Password)
 	if err != nil {
 		log.Error().Err(err).Msg("password is incorrect")
 		ctx.Error(error.NewHttpError(http.StatusUnauthorized))

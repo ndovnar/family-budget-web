@@ -12,8 +12,13 @@ import (
 func (b *Budgets) HandleDeleteBudget(ctx *gin.Context) {
 	id := ctx.Param("id")
 
-	err := b.store.DeleteBudget(ctx, id)
+	hasAccess := b.authz.IsUserHasAccessToBudget(ctx, id)
+	if !hasAccess {
+		ctx.Error(error.NewHttpError(http.StatusForbidden))
+		return
+	}
 
+	err := b.store.DeleteBudget(ctx, id)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to delete budget")
 

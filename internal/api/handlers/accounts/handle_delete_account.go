@@ -11,6 +11,13 @@ import (
 
 func (a *Accounts) HandleDeleteAccount(ctx *gin.Context) {
 	id := ctx.Param("id")
+
+	hasAccess := a.authz.IsUserHasAccessToAccount(ctx, id)
+	if !hasAccess {
+		ctx.Error(error.NewHttpError(http.StatusForbidden))
+		return
+	}
+
 	err := a.store.DeleteAccount(ctx, id)
 
 	if err != nil {

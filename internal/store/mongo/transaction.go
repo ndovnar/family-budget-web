@@ -5,51 +5,71 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ndovnar/family-budget-api/internal/filter"
 	"github.com/ndovnar/family-budget-api/internal/model"
 	"github.com/ndovnar/family-budget-api/internal/store"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"golang.org/x/sync/errgroup"
 )
 
-func (m *Mongo) GetTransactions(ctx context.Context, getTransactionsFilter *model.GetTransactionsFilter) ([]*model.Transaction, error) {
+func (m *Mongo) GetTransactions(ctx context.Context, transactionsFilter *filter.GetTransactionsFilter) ([]*model.Transaction, int64, error) {
+	errGroup, gCtx := errgroup.WithContext(ctx)
+	collection := m.database.Collection(CollectionTransactions)
 	filter := bson.M{
 		"$or": []any{
 			bson.M{
-				"fromAccount": getTransactionsFilter.Account,
+				"fromAccount": transactionsFilter.FromAccountID,
 			},
 			bson.M{
-				"toAccount": getTransactionsFilter.Account,
+				"toAccount": transactionsFilter.ToAccountID,
+			},
+			bson.M{
+				"category": transactionsFilter.CategoryID,
 			},
 		},
-		"deleted": getTransactionsFilter.Deleted,
+		"deleted": false,
 	}
-
-	res, err := m.database.
-		Collection(CollectionTransactions).
-		Find(ctx, filter, nil)
-
-	if err != nil {
-		log.Error().Err(err).Msgf("mongo: failed to get transactions. %v", err)
-		return nil, err
-	}
+	paginationFindOptions := newPaginationFindOptions(transactionsFilter.Pagination)
 
 	transactions := []*model.Transaction{}
-	for res.Next(ctx) {
-		transaction := &model.Transaction{}
-		err = res.Decode(transaction)
+	errGroup.Go(func() error {
+		cursor, err := collection.Find(ctx, filter, paginationFindOptions)
 		if err != nil {
-			return nil, err
+			log.Error().Err(err).Msgf("mongo: failed to get transactions. %v", err)
+			return err
 		}
 
-		transactions = append(transactions, transaction)
+		if err := cursor.All(gCtx, &transactions); err != nil {
+			log.Error().Err(err).Msgf("mongo: failed to decode transactions. %v", err)
+			return err
+		}
+
+		return nil
+	})
+
+	var totalCount int64
+	errGroup.Go(func() error {
+		count, err := collection.CountDocuments(ctx, filter)
+		if err != nil {
+			log.Error().Err(err).Msgf("mongo: failed to count transactions. %v", err)
+			return err
+		}
+
+		totalCount = count
+		return nil
+	})
+
+	if err := errGroup.Wait(); err != nil {
+		return nil, 0, err
 	}
 
-	return transactions, nil
+	return transactions, totalCount, nil
 }
 
 func (m *Mongo) GetTransaction(ctx context.Context, id string) (*model.Transaction, error) {
-	filter, err := getNotDeletedByIDFilter(id)
+	filter, err := newNotDeletedByIDFilter(id)
 	if err != nil {
 		return nil, store.ErrNotFound
 	}
@@ -88,7 +108,7 @@ func (m *Mongo) CreateTransaction(ctx context.Context, transaction *model.Transa
 }
 
 func (m *Mongo) UpdateTransaction(ctx context.Context, id string, updatedTransaction *model.Transaction) (*model.Transaction, error) {
-	filter, err := getNotDeletedByIDFilter(id)
+	filter, err := newNotDeletedByIDFilter(id)
 	if err != nil {
 		return nil, store.ErrNotFound
 	}
@@ -112,9 +132,9 @@ func (m *Mongo) UpdateTransaction(ctx context.Context, id string, updatedTransac
 	update := bson.M{
 		"$set": bson.M{
 			"type":           updatedTransaction.Type,
-			"fromAccount":    updatedTransaction.FromAccount,
-			"toAccount":      updatedTransaction.ToAccount,
-			"category":       updatedTransaction.Category,
+			"fromAccount":    updatedTransaction.FromAccountID,
+			"toAccount":      updatedTransaction.ToAccountID,
+			"category":       updatedTransaction.CategoryID,
 			"amount":         updatedTransaction.Amount,
 			"dates.modified": &currentTime,
 			"description":    updatedTransaction.Description,
@@ -136,7 +156,7 @@ func (m *Mongo) UpdateTransaction(ctx context.Context, id string, updatedTransac
 }
 
 func (m *Mongo) DeleteTransaction(ctx context.Context, id string) error {
-	filter, err := getNotDeletedByIDFilter(id)
+	filter, err := newNotDeletedByIDFilter(id)
 	if err != nil {
 		return store.ErrNotFound
 	}
@@ -189,32 +209,32 @@ func (m *Mongo) getTransaction(ctx context.Context, filter bson.M) (*model.Trans
 
 func (m *Mongo) createTransaction(ctx context.Context, transaction *model.Transaction) error {
 	return m.makeTransaction(ctx, &makeTransactionParams{
-		fromAccount:        transaction.FromAccount,
+		fromAccountID:      transaction.FromAccountID,
 		fromAccountAmmount: transaction.Amount * -1,
-		toAccount:          transaction.ToAccount,
+		toAccountID:        transaction.ToAccountID,
 		toAccountAmmount:   transaction.Amount,
-		category:           transaction.Category,
+		categoryID:         transaction.CategoryID,
 		categoryAmmount:    transaction.Amount * -1,
 	})
 }
 
 func (m *Mongo) revertTransaction(ctx context.Context, transaction *model.Transaction) error {
 	return m.makeTransaction(ctx, &makeTransactionParams{
-		fromAccount:        transaction.FromAccount,
+		fromAccountID:      transaction.FromAccountID,
 		fromAccountAmmount: transaction.Amount,
-		toAccount:          transaction.ToAccount,
+		toAccountID:        transaction.ToAccountID,
 		toAccountAmmount:   transaction.Amount * -1,
-		category:           transaction.Category,
+		categoryID:         transaction.CategoryID,
 		categoryAmmount:    transaction.Amount,
 	})
 }
 
 type makeTransactionParams struct {
-	fromAccount        string
+	fromAccountID      string
 	fromAccountAmmount float64
-	toAccount          string
+	toAccountID        string
 	toAccountAmmount   float64
-	category           string
+	categoryID         string
 	categoryAmmount    float64
 }
 
@@ -222,8 +242,8 @@ func (m *Mongo) makeTransaction(ctx context.Context, params *makeTransactionPara
 	var fromAccount, toAccount *model.Account
 	var category *model.Category
 
-	if params.fromAccount != "" {
-		accountDB, err := m.GetAccount(ctx, params.fromAccount)
+	if params.fromAccountID != "" {
+		accountDB, err := m.GetAccount(ctx, params.fromAccountID)
 		if err != nil {
 			return err
 		}
@@ -231,8 +251,8 @@ func (m *Mongo) makeTransaction(ctx context.Context, params *makeTransactionPara
 		fromAccount = accountDB
 	}
 
-	if params.toAccount != "" {
-		accountDB, err := m.GetAccount(ctx, params.toAccount)
+	if params.toAccountID != "" {
+		accountDB, err := m.GetAccount(ctx, params.toAccountID)
 		if err != nil {
 			return err
 		}
@@ -240,8 +260,8 @@ func (m *Mongo) makeTransaction(ctx context.Context, params *makeTransactionPara
 		toAccount = accountDB
 	}
 
-	if params.category != "" {
-		categoryDB, err := m.GetCategory(ctx, params.category)
+	if params.categoryID != "" {
+		categoryDB, err := m.GetCategory(ctx, params.categoryID)
 		if err != nil {
 			return err
 		}

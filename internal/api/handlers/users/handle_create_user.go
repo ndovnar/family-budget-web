@@ -5,7 +5,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ndovnar/family-budget-api/internal/api/error"
-	"github.com/ndovnar/family-budget-api/internal/hash"
 	"github.com/ndovnar/family-budget-api/internal/model"
 	"github.com/ndovnar/family-budget-api/internal/store"
 	"github.com/rs/zerolog/log"
@@ -19,7 +18,7 @@ func (u *Users) HandleCreateUser(ctx *gin.Context) {
 		return
 	}
 
-	hashedPassword, err := hash.HashPassword(req.Password)
+	hashedPassword, err := hashPassword(req.Password)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to hash password")
 		ctx.Error(error.NewHttpError(http.StatusInternalServerError))

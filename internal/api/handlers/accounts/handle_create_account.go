@@ -20,7 +20,7 @@ func (a *Accounts) HandleCreateAccount(ctx *gin.Context) {
 	}
 
 	account, err := a.store.CreateAccount(ctx, &model.Account{
-		Owner:   claims.UserID,
+		OwnerID: claims.UserID,
 		Name:    req.Name,
 		Balance: req.Balance,
 	})

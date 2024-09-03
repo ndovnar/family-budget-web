@@ -9,23 +9,26 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/ndovnar/family-budget-api/internal/auth"
+	"github.com/ndovnar/family-budget-api/internal/authz"
 	"github.com/ndovnar/family-budget-api/internal/store"
 )
 
 type API struct {
 	config Config
 	auth   *auth.Auth
+	authz  *authz.Authz
 	router *gin.Engine
 	store  store.Store
 	server *http.Server
 }
 
-func New(cfg Config, auth *auth.Auth, store store.Store) *API {
+func New(cfg Config, auth *auth.Auth, authz *authz.Authz, store store.Store) *API {
 	router := gin.Default()
 
 	api := &API{
 		config: cfg,
 		auth:   auth,
+		authz:  authz,
 		router: router,
 		store:  store,
 		server: &http.Server{

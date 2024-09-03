@@ -12,8 +12,13 @@ import (
 func (a *Categories) HandleGetCategory(ctx *gin.Context) {
 	id := ctx.Param("id")
 
-	category, err := a.store.GetCategory(ctx, id)
+	hasAccess := a.authz.IsUserHasAccessToCategory(ctx, id)
+	if !hasAccess {
+		ctx.Error(error.NewHttpError(http.StatusForbidden))
+		return
+	}
 
+	category, err := a.store.GetCategory(ctx, id)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to get category")
 

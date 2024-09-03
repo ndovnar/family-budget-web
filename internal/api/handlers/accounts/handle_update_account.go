@@ -12,6 +12,12 @@ import (
 func (a *Accounts) HandleUpdateAccount(ctx *gin.Context) {
 	id := ctx.Param("id")
 
+	hasAccess := a.authz.IsUserHasAccessToAccount(ctx, id)
+	if !hasAccess {
+		ctx.Error(error.NewHttpError(http.StatusForbidden))
+		return
+	}
+
 	var req accountRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		log.Error().Err(err).Msg("failed to parse data")

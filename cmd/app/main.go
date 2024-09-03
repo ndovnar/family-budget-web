@@ -14,6 +14,7 @@ import (
 
 	"github.com/ndovnar/family-budget-api/internal/api"
 	"github.com/ndovnar/family-budget-api/internal/auth"
+	"github.com/ndovnar/family-budget-api/internal/authz"
 	"github.com/ndovnar/family-budget-api/internal/config"
 	"github.com/ndovnar/family-budget-api/internal/store"
 	"github.com/ndovnar/family-budget-api/internal/store/mongo"
@@ -39,6 +40,7 @@ func main() {
 
 	auth := auth.New(cfg.Auth)
 	myStore, err := mongo.New(sigCtx, cfg.Mongo, application)
+	authz := authz.New(auth, myStore)
 
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed creating store")
@@ -51,7 +53,7 @@ func main() {
 	}
 
 	group.Go(func() error {
-		return runApi(errCtx, cfg.API, auth, myStore)
+		return runApi(errCtx, cfg.API, auth, authz, myStore)
 	})
 
 	if err := group.Wait(); err != nil {
@@ -63,13 +65,13 @@ func main() {
 	log.Info().Msg("main - shutdown completed without errors")
 }
 
-func runApi(ctx context.Context, cfg api.Config, auth *auth.Auth, myStore store.Store) error {
+func runApi(ctx context.Context, cfg api.Config, auth *auth.Auth, authz *authz.Authz, myStore store.Store) error {
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	var serveError error
 
-	api := api.New(cfg, auth, myStore)
+	api := api.New(cfg, auth, authz, myStore)
 
 	go func() {
 		serveError = api.Run(ctx)

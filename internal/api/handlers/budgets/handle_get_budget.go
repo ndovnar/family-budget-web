@@ -12,6 +12,12 @@ import (
 func (b *Budgets) HandleGetBudget(ctx *gin.Context) {
 	id := ctx.Param("id")
 
+	hasAccess := b.authz.IsUserHasAccessToBudget(ctx, id)
+	if !hasAccess {
+		ctx.Error(error.NewHttpError(http.StatusForbidden))
+		return
+	}
+
 	budget, err := b.store.GetBudget(ctx, id)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to get budget")

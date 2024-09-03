@@ -5,39 +5,60 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ndovnar/family-budget-api/internal/filter"
 	"github.com/ndovnar/family-budget-api/internal/model"
 	"github.com/ndovnar/family-budget-api/internal/store"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"golang.org/x/sync/errgroup"
 )
 
-func (m *Mongo) GetCategories(ctx context.Context) ([]*model.Category, error) {
-	res, err := m.database.
-		Collection(CollectionCategories).
-		Find(ctx, bson.M{}, nil)
-
-	if err != nil {
-		log.Error().Err(err).Msgf("mongo: failed to get categories. %v", err)
-		return nil, err
+func (m *Mongo) GetCategories(ctx context.Context, categoriesFilter *filter.GetCategoriesFilter) ([]*model.Category, int64, error) {
+	errGroup, gCtx := errgroup.WithContext(ctx)
+	collection := m.database.Collection(CollectionCategories)
+	filter := bson.M{
+		"budget": categoriesFilter.BudgetID,
 	}
+	paginationFindOptions := newPaginationFindOptions(categoriesFilter.Pagination)
 
 	categories := []*model.Category{}
-	for res.Next(ctx) {
-		category := &model.Category{}
-		err = res.Decode(category)
+	errGroup.Go(func() error {
+		cursor, err := collection.Find(ctx, filter, paginationFindOptions)
 		if err != nil {
-			return nil, err
+			log.Error().Err(err).Msgf("mongo: failed to get categories. %v", err)
+			return err
 		}
 
-		categories = append(categories, category)
+		if err := cursor.All(gCtx, &categories); err != nil {
+			log.Error().Err(err).Msgf("mongo: failed to decode categories. %v", err)
+			return err
+		}
+
+		return nil
+	})
+
+	var totalCount int64
+	errGroup.Go(func() error {
+		count, err := collection.CountDocuments(ctx, filter)
+		if err != nil {
+			log.Error().Err(err).Msgf("mongo: failed to count categories. %v", err)
+			return err
+		}
+
+		totalCount = count
+		return nil
+	})
+
+	if err := errGroup.Wait(); err != nil {
+		return nil, 0, err
 	}
 
-	return categories, nil
+	return categories, totalCount, nil
 }
 
 func (m *Mongo) GetCategory(ctx context.Context, id string) (*model.Category, error) {
-	filter, err := getNotDeletedByIDFilter(id)
+	filter, err := newNotDeletedByIDFilter(id)
 	if err != nil {
 		return nil, store.ErrNotFound
 	}
@@ -71,7 +92,7 @@ func (m *Mongo) CreateCategory(ctx context.Context, category *model.Category) (*
 }
 
 func (m *Mongo) UpdateCategory(ctx context.Context, id string, category *model.Category) (*model.Category, error) {
-	filter, err := getNotDeletedByIDFilter(id)
+	filter, err := newNotDeletedByIDFilter(id)
 	if err != nil {
 		return nil, store.ErrNotFound
 	}
@@ -80,7 +101,7 @@ func (m *Mongo) UpdateCategory(ctx context.Context, id string, category *model.C
 	update := bson.M{
 		"$set": bson.M{
 			"name":           category.Name,
-			"budget":         category.Budget,
+			"budget":         category.BudgetID,
 			"dates.modified": &currentTime,
 			"balance":        category.Balance,
 			"currency":       category.Currency,
@@ -103,7 +124,7 @@ func (m *Mongo) UpdateCategory(ctx context.Context, id string, category *model.C
 }
 
 func (m *Mongo) DeleteCategory(ctx context.Context, id string) error {
-	filter, err := getNotDeletedByIDFilter(id)
+	filter, err := newNotDeletedByIDFilter(id)
 	if err != nil {
 		return store.ErrNotFound
 	}

@@ -21,13 +21,13 @@ func (t *Transactions) HandleCreateTransaction(ctx *gin.Context) {
 	}
 
 	transaction, err := t.store.CreateTransaction(ctx, &model.Transaction{
-		Type:        req.Type,
-		FromAccount: req.FromAccount,
-		ToAccount:   req.ToAccount,
-		Category:    req.Category,
-		User:        claims.UserID,
-		Amount:      req.Amount,
-		Description: req.Description,
+		Type:          req.Type,
+		FromAccountID: req.FromAccountID,
+		ToAccountID:   req.ToAccountID,
+		CategoryID:    req.CategoryID,
+		UserID:        claims.UserID,
+		Amount:        req.Amount,
+		Description:   req.Description,
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("failed to create transaction")

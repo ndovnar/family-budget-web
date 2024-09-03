@@ -20,8 +20,8 @@ func (b *Budgets) HandleCreateBudget(ctx *gin.Context) {
 	}
 
 	budget, err := b.store.CreateBudget(ctx, &model.Budget{
-		Owner: claims.UserID,
-		Name:  req.Name,
+		OwnerID: claims.UserID,
+		Name:    req.Name,
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("failed to create budget")

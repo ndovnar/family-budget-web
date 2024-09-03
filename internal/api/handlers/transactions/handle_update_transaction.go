@@ -12,6 +12,12 @@ import (
 func (t *Transactions) HandleUpdateTransaction(ctx *gin.Context) {
 	id := ctx.Param("id")
 
+	hasAccess := t.authz.IsUserHasWriteAcessToTransaction(ctx, id)
+	if !hasAccess {
+		ctx.Error(error.NewHttpError(http.StatusForbidden))
+		return
+	}
+
 	var req transactionRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		log.Error().Err(err).Msg("failed to parse data")
@@ -19,13 +25,13 @@ func (t *Transactions) HandleUpdateTransaction(ctx *gin.Context) {
 		return
 	}
 
-	transaction, err := t.store.UpdateTransaction(ctx, id, &model.Transaction{
-		Type:        req.Type,
-		FromAccount: req.FromAccount,
-		ToAccount:   req.ToAccount,
-		Category:    req.Category,
-		Amount:      req.Amount,
-		Description: req.Description,
+	updatedTransaction, err := t.store.UpdateTransaction(ctx, id, &model.Transaction{
+		Type:          req.Type,
+		FromAccountID: req.FromAccountID,
+		ToAccountID:   req.ToAccountID,
+		CategoryID:    req.CategoryID,
+		Amount:        req.Amount,
+		Description:   req.Description,
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("failed to updated transaction")
@@ -33,5 +39,5 @@ func (t *Transactions) HandleUpdateTransaction(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, transaction)
+	ctx.JSON(http.StatusOK, updatedTransaction)
 }

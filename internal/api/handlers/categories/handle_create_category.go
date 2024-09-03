@@ -18,7 +18,7 @@ func (a *Categories) HandleCreateCategory(ctx *gin.Context) {
 	}
 
 	category, err := a.store.CreateCategory(ctx, &model.Category{
-		Budget:   req.Budget,
+		BudgetID: req.BudgetID,
 		Name:     req.Name,
 		Currency: req.Currency,
 		Balance:  req.Balance,

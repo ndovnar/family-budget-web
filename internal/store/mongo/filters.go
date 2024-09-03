@@ -1,11 +1,13 @@
 package mongo
 
 import (
+	"github.com/ndovnar/family-budget-api/internal/filter"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func getNotDeletedByIDFilter(id string) (bson.M, error) {
+func newNotDeletedByIDFilter(id string) (bson.M, error) {
 	primitiveID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return nil, err
@@ -17,14 +19,14 @@ func getNotDeletedByIDFilter(id string) (bson.M, error) {
 	}, nil
 }
 
-func getByEmailFilter(email string) bson.M {
+func newByEmailFilter(email string) bson.M {
 	return bson.M{
 		"email":   email,
 		"deleted": false,
 	}
 }
 
-func getByIDFilter(id string) (bson.M, error) {
+func newByIDFilter(id string) (bson.M, error) {
 	primitiveID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return nil, err
@@ -33,4 +35,8 @@ func getByIDFilter(id string) (bson.M, error) {
 	return bson.M{
 		"_id": primitiveID,
 	}, nil
+}
+
+func newPaginationFindOptions(pagination *filter.Pagination) *options.FindOptions {
+	return &options.FindOptions{Limit: &pagination.Limit, Skip: &pagination.Offset}
 }

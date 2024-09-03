@@ -11,6 +11,13 @@ import (
 
 func (a *Accounts) HandleGetAcccount(ctx *gin.Context) {
 	id := ctx.Param("id")
+
+	hasAccess := a.authz.IsUserHasAccessToAccount(ctx, id)
+	if !hasAccess {
+		ctx.Error(error.NewHttpError(http.StatusForbidden))
+		return
+	}
+
 	account, err := a.store.GetAccount(ctx, id)
 
 	if err != nil {

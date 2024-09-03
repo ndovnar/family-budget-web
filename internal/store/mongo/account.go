@@ -5,43 +5,61 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ndovnar/family-budget-api/internal/filter"
 	"github.com/ndovnar/family-budget-api/internal/model"
 	"github.com/ndovnar/family-budget-api/internal/store"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"golang.org/x/sync/errgroup"
 )
 
-func (m *Mongo) GetAccounts(ctx context.Context, getAccountsFilter *model.GetAccountsFilter) ([]*model.Account, error) {
+func (m *Mongo) GetAccounts(ctx context.Context, accountsFilter *filter.GetAccountsFilter) ([]*model.Account, int64, error) {
+	errGroup, gCtx := errgroup.WithContext(ctx)
+	collection := m.database.Collection(CollectionAccounts)
 	filter := bson.M{
-		"owner":   getAccountsFilter.Owner,
-		"deleted": getAccountsFilter.Deleted,
+		"owner":   accountsFilter.OwnerID,
+		"deleted": accountsFilter.Deleted,
 	}
-
-	res, err := m.database.
-		Collection(CollectionAccounts).
-		Find(ctx, filter, nil)
-	if err != nil {
-		log.Error().Err(err).Msgf("mongo: failed to get accounts. %v", err)
-		return nil, err
-	}
+	paginationFindOptions := newPaginationFindOptions(accountsFilter.Pagination)
 
 	accounts := []*model.Account{}
-	for res.Next(ctx) {
-		account := &model.Account{}
-		err = res.Decode(account)
+	errGroup.Go(func() error {
+		cursor, err := collection.Find(ctx, filter, paginationFindOptions)
 		if err != nil {
-			return nil, err
+			log.Error().Err(err).Msgf("mongo: failed to get accounts. %v", err)
+			return err
 		}
 
-		accounts = append(accounts, account)
+		if err := cursor.All(gCtx, &accounts); err != nil {
+			log.Error().Err(err).Msgf("mongo: failed to decode accounts. %v", err)
+			return err
+		}
+
+		return nil
+	})
+
+	var totalCount int64
+	errGroup.Go(func() error {
+		count, err := collection.CountDocuments(ctx, filter)
+		if err != nil {
+			log.Error().Err(err).Msgf("mongo: failed to count accounts. %v", err)
+			return err
+		}
+
+		totalCount = count
+		return nil
+	})
+
+	if err := errGroup.Wait(); err != nil {
+		return nil, 0, err
 	}
 
-	return accounts, nil
+	return accounts, totalCount, nil
 }
 
 func (m *Mongo) GetAccount(ctx context.Context, id string) (*model.Account, error) {
-	filter, err := getNotDeletedByIDFilter(id)
+	filter, err := newNotDeletedByIDFilter(id)
 	if err != nil {
 		return nil, store.ErrNotFound
 	}
@@ -76,7 +94,7 @@ func (m *Mongo) CreateAccount(ctx context.Context, account *model.Account) (*mod
 }
 
 func (m *Mongo) UpdateAccount(ctx context.Context, id string, account *model.Account) (*model.Account, error) {
-	filter, err := getNotDeletedByIDFilter(id)
+	filter, err := newNotDeletedByIDFilter(id)
 	if err != nil {
 		return nil, store.ErrNotFound
 	}
@@ -106,7 +124,7 @@ func (m *Mongo) UpdateAccount(ctx context.Context, id string, account *model.Acc
 }
 
 func (m *Mongo) DeleteAccount(ctx context.Context, id string) error {
-	filter, err := getNotDeletedByIDFilter(id)
+	filter, err := newNotDeletedByIDFilter(id)
 	if err != nil {
 		return store.ErrNotFound
 	}

@@ -5,44 +5,61 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ndovnar/family-budget-api/internal/filter"
 	"github.com/ndovnar/family-budget-api/internal/model"
 	"github.com/ndovnar/family-budget-api/internal/store"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"golang.org/x/sync/errgroup"
 )
 
-func (m *Mongo) GetBudgets(ctx context.Context, getBudgetsFilter *model.GetBudgetsFilter) ([]*model.Budget, error) {
+func (m *Mongo) GetBudgets(ctx context.Context, budgetsFilter *filter.GetBudgetsFilter) ([]*model.Budget, int64, error) {
+	errGroup, gCtx := errgroup.WithContext(ctx)
+	collection := m.database.Collection(CollectionBudgets)
 	filter := bson.M{
-		"owner":   getBudgetsFilter.Owner,
-		"deleted": getBudgetsFilter.Deleted,
+		"owner":   budgetsFilter.OwnerID,
+		"deleted": budgetsFilter.Deleted,
 	}
-
-	res, err := m.database.
-		Collection(CollectionBudgets).
-		Find(ctx, filter, nil)
-
-	if err != nil {
-		log.Error().Err(err).Msgf("mongo: failed to get budgets. %v", err)
-		return nil, err
-	}
+	paginationFindOptions := newPaginationFindOptions(budgetsFilter.Pagination)
 
 	budgets := []*model.Budget{}
-	for res.Next(ctx) {
-		budget := &model.Budget{}
-		err = res.Decode(budget)
+	errGroup.Go(func() error {
+		cursor, err := collection.Find(ctx, filter, paginationFindOptions)
 		if err != nil {
-			return nil, err
+			log.Error().Err(err).Msgf("mongo: failed to get budgets. %v", err)
+			return err
 		}
 
-		budgets = append(budgets, budget)
+		if err := cursor.All(gCtx, &budgets); err != nil {
+			log.Error().Err(err).Msgf("mongo: failed to decode budgets. %v", err)
+			return err
+		}
+
+		return nil
+	})
+
+	var totalCount int64
+	errGroup.Go(func() error {
+		count, err := collection.CountDocuments(ctx, filter)
+		if err != nil {
+			log.Error().Err(err).Msgf("mongo: failed to count budgets. %v", err)
+			return err
+		}
+
+		totalCount = count
+		return nil
+	})
+
+	if err := errGroup.Wait(); err != nil {
+		return nil, 0, err
 	}
 
-	return budgets, nil
+	return budgets, totalCount, nil
 }
 
 func (m *Mongo) GetBudget(ctx context.Context, id string) (*model.Budget, error) {
-	filter, err := getNotDeletedByIDFilter(id)
+	filter, err := newNotDeletedByIDFilter(id)
 	if err != nil {
 		return nil, store.ErrNotFound
 	}
@@ -76,7 +93,7 @@ func (m *Mongo) CreateBudget(ctx context.Context, budget *model.Budget) (*model.
 }
 
 func (m *Mongo) UpdateBudget(ctx context.Context, id string, budget *model.Budget) (*model.Budget, error) {
-	filter, err := getNotDeletedByIDFilter(id)
+	filter, err := newNotDeletedByIDFilter(id)
 	if err != nil {
 		return nil, store.ErrNotFound
 	}
@@ -105,7 +122,7 @@ func (m *Mongo) UpdateBudget(ctx context.Context, id string, budget *model.Budge
 }
 
 func (m *Mongo) DeleteBudget(ctx context.Context, id string) error {
-	filter, err := getNotDeletedByIDFilter(id)
+	filter, err := newNotDeletedByIDFilter(id)
 	if err != nil {
 		return store.ErrNotFound
 	}

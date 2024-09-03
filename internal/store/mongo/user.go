@@ -13,7 +13,7 @@ import (
 )
 
 func (m *Mongo) GetUserByID(ctx context.Context, id string) (*model.User, error) {
-	filter, err := getNotDeletedByIDFilter(id)
+	filter, err := newNotDeletedByIDFilter(id)
 	if err != nil {
 		return nil, store.ErrNotFound
 	}
@@ -22,7 +22,7 @@ func (m *Mongo) GetUserByID(ctx context.Context, id string) (*model.User, error)
 }
 
 func (m *Mongo) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
-	filter := getByEmailFilter(email)
+	filter := newByEmailFilter(email)
 	return m.getUser(ctx, filter)
 }
 

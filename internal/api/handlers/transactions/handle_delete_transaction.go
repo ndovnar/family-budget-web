@@ -11,8 +11,27 @@ import (
 
 func (t *Transactions) HandleDeleteTransaction(ctx *gin.Context) {
 	id := ctx.Param("id")
+	claims := t.auth.GetClaimsFromContext(ctx)
+	
+	hasAccess := t.authz.IsUserHasWriteAcessToTransaction(ctx, id)
+	if !hasAccess {
+		ctx.Error(error.NewHttpError(http.StatusForbidden))
+		return
+	}
 
-	err := t.store.DeleteTransaction(ctx, id)
+	transaction, err := t.store.GetTransaction(ctx, id)
+	if err != nil {
+		log.Error().Err(err).Msg("transaction not found")
+		ctx.Error(error.NewHttpError(http.StatusNotFound))
+		return
+	}
+
+	if transaction.UserID != claims.UserID {
+		ctx.Error(error.NewHttpError(http.StatusForbidden))
+		return
+	}
+
+	err = t.store.DeleteTransaction(ctx, id)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to delete transaction")
 

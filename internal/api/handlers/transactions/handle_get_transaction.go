@@ -12,7 +12,13 @@ import (
 func (t *Transactions) HandleGetTransaction(ctx *gin.Context) {
 	id := ctx.Param("id")
 
-	budget, err := t.store.GetTransaction(ctx, id)
+	hasAccess := t.authz.IsUserHasReadAcessToTransaction(ctx, id)
+	if !hasAccess {
+		ctx.Error(error.NewHttpError(http.StatusForbidden))
+		return
+	}
+
+	transaction, err := t.store.GetTransaction(ctx, id)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to get transaction")
 
@@ -25,5 +31,5 @@ func (t *Transactions) HandleGetTransaction(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, budget)
+	ctx.JSON(http.StatusOK, transaction)
 }

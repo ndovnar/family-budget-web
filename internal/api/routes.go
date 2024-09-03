@@ -12,11 +12,11 @@ import (
 
 func (api *API) registerRoutes() {
 	userHandlers := users.New(api.auth, api.store)
-	accountHandlers := accounts.New(api.auth, api.store)
+	accountHandlers := accounts.New(api.auth, api.authz, api.store)
 	tokenHandlers := tokens.New(api.auth, api.store)
-	budgetHandlers := budgets.New(api.auth, api.store)
-	categoryHandlers := categories.New(api.store)
-	transactionHandlers := transactions.New(api.auth, api.store)
+	budgetHandlers := budgets.New(api.auth, api.authz, api.store)
+	categoryHandlers := categories.New(api.authz, api.store)
+	transactionHandlers := transactions.New(api.auth, api.authz, api.store)
 
 	api.router.Use(middlewares.Error())
 	authRoutes := api.router.Group("/").Use(middlewares.Auth(api.auth, api.store))

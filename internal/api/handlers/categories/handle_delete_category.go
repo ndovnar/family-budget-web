@@ -12,6 +12,12 @@ import (
 func (a *Categories) HandleDeleteCategory(ctx *gin.Context) {
 	id := ctx.Param("id")
 
+	hasAccess := a.authz.IsUserHasAccessToCategory(ctx, id)
+	if !hasAccess {
+		ctx.Error(error.NewHttpError(http.StatusForbidden))
+		return
+	}
+
 	err := a.store.DeleteCategory(ctx, id)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to delete category")

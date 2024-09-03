@@ -2,7 +2,7 @@ package model
 
 type Category struct {
 	ID        string  `json:"id,omitempty" bson:"id,omitempty"`
-	Budget    string  `json:"budget" bson:"budget"`
+	BudgetID  string  `json:"budget" bson:"budget"`
 	Name      string  `json:"name" bson:"name"`
 	Currency  string  `json:"currency" bson:"currency"`
 	Balance   float64 `json:"balance" bson:"balance"`

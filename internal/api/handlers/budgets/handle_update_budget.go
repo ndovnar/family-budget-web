@@ -12,6 +12,12 @@ import (
 func (b *Budgets) HandleUpdateBudget(ctx *gin.Context) {
 	id := ctx.Param("id")
 
+	hasAccess := b.authz.IsUserHasAccessToBudget(ctx, id)
+	if !hasAccess {
+		ctx.Error(error.NewHttpError(http.StatusForbidden))
+		return
+	}
+
 	var req budgetRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		log.Error().Err(err).Msg("failed to parse data")

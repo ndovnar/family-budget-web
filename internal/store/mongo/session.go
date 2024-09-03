@@ -13,7 +13,7 @@ import (
 )
 
 func (m *Mongo) GetSessionByID(ctx context.Context, id string) (*model.Session, error) {
-	filter, err := getByIDFilter(id)
+	filter, err := newByIDFilter(id)
 	if err != nil {
 		return nil, store.ErrNotFound
 	}
@@ -47,7 +47,7 @@ func (m *Mongo) CreateSession(ctx context.Context, session *model.Session) (*mod
 }
 
 func (m *Mongo) DeleteSession(ctx context.Context, id string) error {
-	filter, err := getNotDeletedByIDFilter(id)
+	filter, err := newNotDeletedByIDFilter(id)
 	if err != nil {
 		return store.ErrNotFound
 	}
