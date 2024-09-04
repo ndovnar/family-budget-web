@@ -8,7 +8,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/caarlos0/env/v11"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
@@ -33,24 +32,19 @@ func main() {
 	}()
 
 	cfg, err := config.Load()
-
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to load config")
 	}
 
-	auth := auth.New(cfg.Auth)
 	myStore, err := mongo.New(sigCtx, cfg.Mongo, application)
-	authz := authz.New(auth, myStore)
-
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed creating store")
 	}
 
-	group, errCtx := errgroup.WithContext(sigCtx)
+	auth := auth.New(cfg.Auth)
+	authz := authz.New(auth, myStore)
 
-	if err := env.Parse(&cfg); err != nil {
-		log.Fatal().Err(err).Msg("Failled to parse env variables")
-	}
+	group, errCtx := errgroup.WithContext(sigCtx)
 
 	group.Go(func() error {
 		return runApi(errCtx, cfg.API, auth, authz, myStore)
@@ -63,6 +57,7 @@ func main() {
 	}
 
 	log.Info().Msg("main - shutdown completed without errors")
+
 }
 
 func runApi(ctx context.Context, cfg api.Config, auth *auth.Auth, authz *authz.Authz, myStore store.Store) error {
