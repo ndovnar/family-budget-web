@@ -11,7 +11,7 @@ import (
 )
 
 func (api *API) registerRoutes() {
-	userHandlers := users.New(api.auth, api.store)
+	userHandlers := users.New(api.auth, api.authz, api.store)
 	accountHandlers := accounts.New(api.auth, api.authz, api.store)
 	tokenHandlers := tokens.New(api.auth, api.store)
 	budgetHandlers := budgets.New(api.auth, api.authz, api.store)
@@ -22,6 +22,7 @@ func (api *API) registerRoutes() {
 	authRoutes := api.router.Group("/").Use(middlewares.Auth(api.auth, api.store))
 
 	api.router.POST("/users", userHandlers.HandleCreateUser)
+	authRoutes.GET("users/:id", userHandlers.HandleGetUser)
 	api.router.POST("/users/login", userHandlers.HandleLoginUser)
 	authRoutes.POST("/users/logout", userHandlers.HandleLogoutUser)
 

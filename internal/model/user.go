@@ -5,7 +5,7 @@ type User struct {
 	Email     string `json:"email" bson:"email"`
 	FirstName string `json:"firstName" bson:"firstName"`
 	LastName  string `json:"lastName" bson:"lastName"`
-	Password  string `bson:"password"`
+	Password  string `json:"-" bson:"password"`
 	IsDeleted bool   `json:"deleted,omitempty" bson:"deleted"`
 	Dates     Dates  `json:"dates" bson:"dates"`
 }
