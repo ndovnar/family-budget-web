@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"os/signal"
-	"runtime"
 	"syscall"
 	"time"
 
@@ -22,8 +21,6 @@ import (
 var version, gitCommit, application string
 
 func main() {
-	log.Info().Msgf("%s %s (%s) -- %s", application, version, gitCommit, runtime.Version())
-
 	sigCtx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-sigCtx.Done()
