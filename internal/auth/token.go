@@ -14,7 +14,6 @@ var (
 func (auth *Auth) createToken(sessionID, userID, firstName, lastName string, duration time.Duration) (string, error) {
 	claims := newClaims(sessionID, userID, firstName, lastName, duration)
 	jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	jwtToken.SignedString([]byte(auth.secretKey))
 	token, err := jwtToken.SignedString([]byte(auth.secretKey))
 	return token, err
 }
