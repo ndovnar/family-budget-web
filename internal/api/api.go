@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
@@ -32,8 +33,9 @@ func New(cfg Config, auth *auth.Auth, authz *authz.Authz, store store.Store) *AP
 		router: router,
 		store:  store,
 		server: &http.Server{
-			Addr:    fmt.Sprintf(":%v", cfg.Port),
-			Handler: router.Handler(),
+			Addr:              fmt.Sprintf(":%v", cfg.Port),
+			ReadHeaderTimeout: 5 * time.Second,
+			Handler:           router.Handler(),
 		},
 	}
 
