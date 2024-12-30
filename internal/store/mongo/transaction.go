@@ -17,13 +17,22 @@ import (
 func (m *Mongo) GetTransactions(ctx context.Context, transactionsFilter *filter.GetTransactionsFilter) ([]*model.Transaction, int64, error) {
 	errGroup, gCtx := errgroup.WithContext(ctx)
 	collection := m.database.Collection(CollectionTransactions)
+
+	fromAccountID := transactionsFilter.FromAccountID
+	toAccountID := transactionsFilter.ToAccountID
+
+	if transactionsFilter.AccountID != "" {
+		fromAccountID = transactionsFilter.AccountID
+		toAccountID = transactionsFilter.AccountID
+	}
+
 	filter := bson.M{
 		"$or": []any{
 			bson.M{
-				"fromAccount": transactionsFilter.FromAccountID,
+				"fromAccount": fromAccountID,
 			},
 			bson.M{
-				"toAccount": transactionsFilter.ToAccountID,
+				"toAccount": toAccountID,
 			},
 			bson.M{
 				"category": transactionsFilter.CategoryID,

@@ -17,9 +17,18 @@ func (t *Transactions) HandleGetTransactions(ctx *gin.Context) {
 		return
 	}
 
-	if filter.CategoryID == "" && filter.FromAccountID == "" && filter.ToAccountID == "" {
+	if filter.CategoryID == "" && filter.FromAccountID == "" && filter.ToAccountID == "" && filter.AccountID == "" {
 		ctx.Error(error.NewHttpError(http.StatusBadRequest))
 		return
+	}
+
+	if filter.FromAccountID != "" {
+		hasAccess := t.authz.IsUserHasAccessToAccount(ctx, filter.AccountID)
+
+		if !hasAccess {
+			ctx.Error(error.NewHttpError(http.StatusForbidden))
+			return
+		}
 	}
 
 	if filter.FromAccountID != "" {

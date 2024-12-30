@@ -1,7 +1,7 @@
 package model
 
 type Category struct {
-	ID        string  `json:"id,omitempty" bson:"id,omitempty"`
+	ID        string  `json:"id,omitempty" bson:"_id,omitempty"`
 	BudgetID  string  `json:"budget" bson:"budget"`
 	Name      string  `json:"name" bson:"name"`
 	Currency  string  `json:"currency" bson:"currency"`
