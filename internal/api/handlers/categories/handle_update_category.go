@@ -20,7 +20,6 @@ func (a *Categories) HandleUpdateCategory(ctx *gin.Context) {
 
 	var req categoryRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		log.Error().Err(err).Msg("failed to parse data")
 		ctx.Error(error.NewHttpError(http.StatusBadRequest))
 		return
 	}

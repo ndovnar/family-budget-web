@@ -11,7 +11,6 @@ import (
 func (t *Tokens) HandleRenewAccessToken(ctx *gin.Context) {
 	var req renewTokenRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		log.Error().Err(err).Msg("failed to parse data")
 		ctx.Error(error.NewHttpError(http.StatusBadRequest))
 		return
 	}

@@ -20,7 +20,6 @@ func (t *Transactions) HandleUpdateTransaction(ctx *gin.Context) {
 
 	var req transactionRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		log.Error().Err(err).Msg("failed to parse data")
 		ctx.Error(error.NewHttpError(http.StatusBadRequest))
 		return
 	}
