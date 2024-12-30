@@ -79,7 +79,7 @@ func (m *Mongo) CreateAccount(ctx context.Context, account *model.Account) (*mod
 		InsertOne(ctx, account)
 
 	if err != nil {
-		log.Error().Err(err).Msgf("mongo: failed to create account. %v", err)
+		log.Error().Err(err).Msg("mongo: failed to create account.")
 		return nil, mongoErrorToDBError(err)
 	}
 
@@ -158,7 +158,7 @@ func (m *Mongo) getAccount(ctx context.Context, filter bson.M) (*model.Account, 
 	err := res.Decode(account)
 
 	if err != nil {
-		log.Error().Err(err).Msgf("mongo getAccount: error while decoding the database object to a account. %v", err)
+		log.Error().Err(err).Msg("mongo getAccount: error while decoding the database object to a account. %v")
 		return nil, mongoErrorToDBError(err)
 	}
 

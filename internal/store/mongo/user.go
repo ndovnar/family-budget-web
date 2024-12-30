@@ -37,7 +37,7 @@ func (m *Mongo) CreateUser(ctx context.Context, user *model.User) (*model.User, 
 		Collection(CollectionUsers).
 		InsertOne(ctx, user)
 	if err != nil {
-		log.Info().Msgf("mongo: failed to create user. %v", err)
+		log.Info().Msg("mongo: failed to create user.")
 		return nil, mongoErrorToDBError(err)
 	}
 
@@ -60,7 +60,7 @@ func (m *Mongo) getUser(ctx context.Context, filter bson.M) (*model.User, error)
 	err := res.Decode(user)
 
 	if err != nil {
-		log.Error().Err(err).Msgf("mongo getUser: error while decoding the database object to a user. %v", err)
+		log.Error().Err(err).Msg("mongo getUser: error while decoding the database object to a user.")
 		return nil, mongoErrorToDBError(err)
 	}
 

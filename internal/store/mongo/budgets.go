@@ -27,12 +27,12 @@ func (m *Mongo) GetBudgets(ctx context.Context, budgetsFilter *filter.GetBudgets
 	errGroup.Go(func() error {
 		cursor, err := collection.Find(ctx, filter, paginationFindOptions)
 		if err != nil {
-			log.Error().Err(err).Msgf("mongo: failed to get budgets. %v", err)
+			log.Error().Err(err).Msg("mongo: failed to get budgets")
 			return err
 		}
 
 		if err := cursor.All(gCtx, &budgets); err != nil {
-			log.Error().Err(err).Msgf("mongo: failed to decode budgets. %v", err)
+			log.Error().Err(err).Msg("mongo: failed to decode budgets.")
 			return err
 		}
 
@@ -43,7 +43,7 @@ func (m *Mongo) GetBudgets(ctx context.Context, budgetsFilter *filter.GetBudgets
 	errGroup.Go(func() error {
 		count, err := collection.CountDocuments(ctx, filter)
 		if err != nil {
-			log.Error().Err(err).Msgf("mongo: failed to count budgets. %v", err)
+			log.Error().Err(err).Msg("mongo: failed to count budgets.")
 			return err
 		}
 
@@ -78,7 +78,7 @@ func (m *Mongo) CreateBudget(ctx context.Context, budget *model.Budget) (*model.
 		Collection(CollectionBudgets).
 		InsertOne(ctx, budget)
 	if err != nil {
-		log.Error().Err(err).Msgf("mongo: failed to create budget. %v", err)
+		log.Error().Err(err).Msg("mongo: failed to create budget.")
 		return nil, mongoErrorToDBError(err)
 	}
 
@@ -156,7 +156,7 @@ func (m *Mongo) getBudget(ctx context.Context, filter bson.M) (*model.Budget, er
 	err := res.Decode(budget)
 
 	if err != nil {
-		log.Error().Err(err).Msgf("mongo getBudget: error while decoding the database object to a budget. %v", err)
+		log.Error().Err(err).Msg("mongo getBudget: error while decoding the database object to a budget.")
 		return nil, mongoErrorToDBError(err)
 	}
 

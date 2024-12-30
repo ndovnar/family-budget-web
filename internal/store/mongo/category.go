@@ -26,12 +26,12 @@ func (m *Mongo) GetCategories(ctx context.Context, categoriesFilter *filter.GetC
 	errGroup.Go(func() error {
 		cursor, err := collection.Find(ctx, filter, paginationFindOptions)
 		if err != nil {
-			log.Error().Err(err).Msgf("mongo: failed to get categories. %v", err)
+			log.Error().Err(err).Msg("mongo: failed to get categories.")
 			return err
 		}
 
 		if err := cursor.All(gCtx, &categories); err != nil {
-			log.Error().Err(err).Msgf("mongo: failed to decode categories. %v", err)
+			log.Error().Err(err).Msg("mongo: failed to decode categories.")
 			return err
 		}
 
@@ -42,7 +42,7 @@ func (m *Mongo) GetCategories(ctx context.Context, categoriesFilter *filter.GetC
 	errGroup.Go(func() error {
 		count, err := collection.CountDocuments(ctx, filter)
 		if err != nil {
-			log.Error().Err(err).Msgf("mongo: failed to count categories. %v", err)
+			log.Error().Err(err).Msg("mongo: failed to count categories.")
 			return err
 		}
 
@@ -77,7 +77,7 @@ func (m *Mongo) CreateCategory(ctx context.Context, category *model.Category) (*
 		Collection(CollectionCategories).
 		InsertOne(ctx, category)
 	if err != nil {
-		log.Error().Err(err).Msgf("mongo: failed to create category. %v", err)
+		log.Error().Err(err).Msg("mongo: failed to create category.")
 		return nil, mongoErrorToDBError(err)
 	}
 
@@ -158,7 +158,7 @@ func (m *Mongo) getCategory(ctx context.Context, filter bson.M) (*model.Category
 	err := res.Decode(category)
 
 	if err != nil {
-		log.Error().Err(err).Msgf("mongo getCategory: error while decoding the database object to a category. %v", err)
+		log.Error().Err(err).Msg("mongo getCategory: error while decoding the database object to a category.")
 		return nil, mongoErrorToDBError(err)
 	}
 

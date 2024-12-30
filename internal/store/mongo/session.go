@@ -32,7 +32,7 @@ func (m *Mongo) CreateSession(ctx context.Context, session *model.Session) (*mod
 		Collection(CollectionSessions).
 		InsertOne(ctx, session)
 	if err != nil {
-		log.Info().Msgf("mongo: failed to create session. %v", err)
+		log.Error().Err(err).Msg("mongo: failed to create session.")
 		return nil, mongoErrorToDBError(err)
 	}
 
@@ -82,7 +82,7 @@ func (m *Mongo) getSession(ctx context.Context, filter bson.M) (*model.Session, 
 	err := res.Decode(session)
 
 	if err != nil {
-		log.Error().Err(err).Msgf("mongo getSession: error while decoding the database object to a session. %v", err)
+		log.Error().Err(err).Msg("mongo getSession: error while decoding the database object to a session.")
 		return nil, mongoErrorToDBError(err)
 	}
 

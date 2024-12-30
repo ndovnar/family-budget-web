@@ -37,12 +37,12 @@ func (m *Mongo) GetTransactions(ctx context.Context, transactionsFilter *filter.
 	errGroup.Go(func() error {
 		cursor, err := collection.Find(ctx, filter, paginationFindOptions)
 		if err != nil {
-			log.Error().Err(err).Msgf("mongo: failed to get transactions. %v", err)
+			log.Error().Err(err).Msg("mongo: failed to get transactions.")
 			return err
 		}
 
 		if err := cursor.All(gCtx, &transactions); err != nil {
-			log.Error().Err(err).Msgf("mongo: failed to decode transactions. %v", err)
+			log.Error().Err(err).Msg("mongo: failed to decode transactions.")
 			return err
 		}
 
@@ -53,7 +53,7 @@ func (m *Mongo) GetTransactions(ctx context.Context, transactionsFilter *filter.
 	errGroup.Go(func() error {
 		count, err := collection.CountDocuments(ctx, filter)
 		if err != nil {
-			log.Error().Err(err).Msgf("mongo: failed to count transactions. %v", err)
+			log.Error().Err(err).Msg("mongo: failed to count transactions.")
 			return err
 		}
 
@@ -93,7 +93,7 @@ func (m *Mongo) CreateTransaction(ctx context.Context, transaction *model.Transa
 		Collection(CollectionTransactions).
 		InsertOne(ctx, transaction)
 	if err != nil {
-		log.Error().Err(err).Msgf("mongo: failed to create transaction. %v", err)
+		log.Error().Err(err).Msg("mongo: failed to create transaction.")
 		return nil, mongoErrorToDBError(err)
 	}
 
@@ -200,7 +200,7 @@ func (m *Mongo) getTransaction(ctx context.Context, filter bson.M) (*model.Trans
 	err := res.Decode(transaction)
 
 	if err != nil {
-		log.Error().Err(err).Msgf("mongo getTransaction: error while decoding the database object to a transaction. %v", err)
+		log.Error().Err(err).Msg("mongo getTransaction: error while decoding the database object to a transaction.")
 		return nil, mongoErrorToDBError(err)
 	}
 
