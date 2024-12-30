@@ -21,11 +21,10 @@ func (a *Accounts) HandleDeleteAccount(ctx *gin.Context) {
 	err := a.store.DeleteAccount(ctx, id)
 
 	if err != nil {
-		log.Error().Err(err).Msg("failed to delete account")
-
 		if err == store.ErrNotFound {
 			ctx.Error(error.NewHttpError(http.StatusNotFound))
 		} else {
+			log.Error().Err(err).Msg("failed to delete account")
 			ctx.Error(error.NewHttpError(http.StatusInternalServerError))
 		}
 
