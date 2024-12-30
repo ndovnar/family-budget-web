@@ -21,7 +21,6 @@ func (t *Transactions) HandleCreateTransaction(ctx *gin.Context) {
 	}
 
 	transaction, err := t.store.CreateTransaction(ctx, &model.Transaction{
-		Type:          req.Type,
 		FromAccountID: req.FromAccountID,
 		ToAccountID:   req.ToAccountID,
 		CategoryID:    req.CategoryID,

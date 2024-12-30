@@ -131,7 +131,6 @@ func (m *Mongo) UpdateTransaction(ctx context.Context, id string, updatedTransac
 	currentTime := time.Now()
 	update := bson.M{
 		"$set": bson.M{
-			"type":           updatedTransaction.Type,
 			"fromAccount":    updatedTransaction.FromAccountID,
 			"toAccount":      updatedTransaction.ToAccountID,
 			"category":       updatedTransaction.CategoryID,

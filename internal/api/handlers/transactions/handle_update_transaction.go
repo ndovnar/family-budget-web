@@ -26,7 +26,6 @@ func (t *Transactions) HandleUpdateTransaction(ctx *gin.Context) {
 	}
 
 	updatedTransaction, err := t.store.UpdateTransaction(ctx, id, &model.Transaction{
-		Type:          req.Type,
 		FromAccountID: req.FromAccountID,
 		ToAccountID:   req.ToAccountID,
 		CategoryID:    req.CategoryID,
