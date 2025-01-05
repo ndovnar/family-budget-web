@@ -6,8 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/ndovnar/family-budget-api/internal/api/error"
 	"github.com/ndovnar/family-budget-api/internal/filter"
-	"github.com/ndovnar/family-budget-api/internal/helpers/response"
-	"github.com/ndovnar/family-budget-api/internal/model"
 	"github.com/rs/zerolog/log"
 )
 
@@ -69,12 +67,5 @@ func (t *Transactions) HandleGetTransactions(ctx *gin.Context) {
 		return
 	}
 
-	resp := response.CollectionResponse[*model.Transaction]{
-		Values: transactions,
-		Meta: &response.CollectionMetaData{
-			Count: count,
-		},
-	}
-
-	ctx.JSON(http.StatusOK, resp)
+	ctx.JSON(http.StatusOK, newTransactionsResponse(transactions, count))
 }
